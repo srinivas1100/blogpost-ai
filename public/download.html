@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Transcript and Blog Post Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        #main-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Top Section */
+        #top-section {
+            display: flex;
+            justify-content: space-between; /* Align text field on left, buttons on right */
+            align-items: center; /* Center vertically */
+            padding: 20px;
+            background-color: #f4f4f4;
+            border-bottom: 1px solid #ccc;
+            width: 100%;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            flex-grow: 1; /* Allow the input to take available space */
+            margin-right: 20px; /* Space between input and buttons */
+        }
+
+        #top-buttons {
+            display: flex;
+            gap: 10px; /* Space between the buttons */
+        }
+
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Main Content - Split Left and Right Sections */
+        #content {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100% - 200px);
+        }
+
+        #left-section, #right-section {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #left-section {
+            border-right: 1px solid #ccc;
+        }
+
+        #transcript, #blogPost {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 300px;
+            white-space: pre-wrap;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="main-container">
+    <!-- Top Section -->
+    <div id="top-section">
+
+        <label for="videoId">Enter YouTube Video ID:  </label>
+        <input type="text" id="videoId" placeholder="YouTube video ID">
+<div></div>
+        <div id="top-buttons">
+            <button id="displayTranscript" disabled>Download Audio</button>
+            <button id="displayTranscript" disabled>Display Transcript</button>
+            <button id="createBlogPost" disabled>Create Blog Post</button>
+        </div>
+    </div>
+
+    <!-- Main Content Section (Left and Right) -->
+    <div id="content">
+        <!-- Left Section: Generated Transcript -->
+        <div id="left-section">
+            <h2>Generated Transcript</h2>
+            <div id="transcript">Transcript will appear here...</div>
+        </div>
+
+        <!-- Right Section: Created Blog Post -->
+        <div id="right-section">
+            <h2>Created Blog Post</h2>
+            <div id="blogPost">Blog post will appear here...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const videoIdInput = document.getElementById('videoId');
+    const displayTranscriptButton = document.getElementById('displayTranscript');
+    const createBlogPostButton = document.getElementById('createBlogPost');
+    const transcriptDiv = document.getElementById('transcript');
+    const blogPostDiv = document.getElementById('blogPost');
+
+    let transcriptText = '';
+
+    // Enable or disable buttons based on user input
+    videoIdInput.addEventListener('input', function() {
+        if (videoIdInput.value.trim() === '') {
+            displayTranscriptButton.disabled = true;
+            createBlogPostButton.disabled = true;
+        } else {
+            displayTranscriptButton.disabled = false;
+        }
+    });
+
+    // Display Transcript button click event
+    displayTranscriptButton.addEventListener('click', async function() {
+        const videoId = videoIdInput.value.trim();
+
+        if (videoId === '') {
+            alert('Please enter a YouTube video ID.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/getTranscript?videoId=${videoId}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                transcriptText = data.transcript;
+                transcriptDiv.textContent = transcriptText;
+                createBlogPostButton.disabled = false;  // Enable "Create Blog Post" button
+            } else {
+                alert('Error fetching transcript: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+
+
+    // Client-side JavaScript
+createBlogPostButton.addEventListener('click', async function() {
+    if (transcriptText === '') {
+      alert('Transcript must be generated before creating a blog post.');
+      return;
+    }
+  
+    try {
+      const response = await fetch('/generateBlogPost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ transcriptText })
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        const blogPost = data.blogPost;
+  
+        // Bind the blog post to the right section
+        blogPostDiv.textContent = blogPost;
+  
+        // Optionally append the blog post at the end of the transcript
+        // transcriptDiv.textContent += `\n\nGenerated Blog Post:\n${blogPost}`;
+      } else {
+        alert('Error generating blog post: ' + data.error);
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  });
+
+
+</script>
+
+</body>
+</html>

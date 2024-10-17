@@ -1,7 +1,7 @@
 const express = require("express");
 const { YoutubeTranscript } = require("youtube-transcript");
+const axios = require("axios");
 const path = require("path");
-const serverless = require("serverless-http");
 const cors = require("cors");
 
 require("dotenv").config();
@@ -27,6 +27,36 @@ app.use((req, res, next) => {
 // Serve the HTML page when user hits the root route
 app.get("/app", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/downloadAudio", (req, res) => {
+  const videoId = req.query.videoId;
+
+  if (!videoId) {
+    return res.status(400).json({ error: "YouTube video ID is required" });
+  }
+
+  const options = {
+    method: "GET",
+    url: "https://youtube-mp36.p.rapidapi.com/dl",
+    params: { id: videoId },
+    headers: {
+      "x-rapidapi-key": process.env.RAPIDAPI_KEY, // Your RapidAPI Key
+      "x-rapidapi-host": "youtube-mp36.p.rapidapi.com",
+    },
+  };
+
+  axios
+    .request(options)
+    .then(function (response) {
+      res.json(response.data);
+    })
+    .catch(function (error) {
+      console.error("Error downloading audio:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to download audio", details: error.message });
+    });
 });
 
 // Fetch transcript when the user clicks the button
