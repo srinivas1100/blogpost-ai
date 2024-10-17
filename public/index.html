@@ -123,8 +123,8 @@
 
     let transcriptText = '';
 
-    // Enable or disable buttons based on user input
-    videoIdInput.addEventListener('input', function() {
+      // Enable or disable buttons based on user input
+      videoIdInput.addEventListener('input', function() {
         if (videoIdInput.value.trim() === '') {
             displayTranscriptButton.disabled = true;
             createBlogPostButton.disabled = true;
@@ -142,56 +142,65 @@
             return;
         }
 
+        // Step 1: Download audio from YouTube
+        transcriptDiv.textContent = "Downloading audio...";
         try {
-            const response = await fetch(`/getTranscript?videoId=${videoId}`);
-            const data = await response.json();
+            const downloadResponse = await fetch(`/downloadAudio?videoId=${videoId}`);
+            const downloadData = await downloadResponse.json();
 
-            if (response.ok) {
-                transcriptText = data.transcript;
-                transcriptDiv.textContent = transcriptText;
-                createBlogPostButton.disabled = false;  // Enable "Create Blog Post" button
+            if (downloadResponse.ok) {
+                const audioUrl = downloadData.audioUrl;
+                
+                // Step 2: Call Deepgram API to transcribe
+                transcriptDiv.textContent = "Generating transcript...";
+                const transcribeResponse = await fetch(`/transcribeAudio?audioUrl=${audioUrl}`);
+                const transcribeData = await transcribeResponse.json();
+
+                if (transcribeResponse.ok) {
+                    transcriptText = transcribeData.transcript;
+                    transcriptDiv.textContent = "Transcript generation completed:\n" + transcriptText;
+                    createBlogPostButton.disabled = false;
+                } else {
+                    transcriptDiv.textContent = "Error generating transcript: " + transcribeData.error;
+                }
             } else {
-                alert('Error fetching transcript: ' + data.error);
+                transcriptDiv.textContent = "Error downloading audio: " + downloadData.error;
             }
         } catch (error) {
-            alert('Error: ' + error.message);
+            transcriptDiv.textContent = 'Error: ' + error.message;
         }
     });
 
+    // Generate Blog Post button click event
+    createBlogPostButton.addEventListener('click', async function() {
+        if (transcriptText === '') {
+            alert('Transcript must be generated before creating a blog post.');
+            return;
+        }
 
-    // Client-side JavaScript
-createBlogPostButton.addEventListener('click', async function() {
-    if (transcriptText === '') {
-      alert('Transcript must be generated before creating a blog post.');
-      return;
-    }
-  
-    try {
-      const response = await fetch('/generateBlogPost', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ transcriptText })
-      });
-  
-      const data = await response.json();
-  
-      if (response.ok) {
-        const blogPost = data.blogPost;
-  
-        // Bind the blog post to the right section
-        blogPostDiv.textContent = blogPost;
-  
-        // Optionally append the blog post at the end of the transcript
-        // transcriptDiv.textContent += `\n\nGenerated Blog Post:\n${blogPost}`;
-      } else {
-        alert('Error generating blog post: ' + data.error);
-      }
-    } catch (error) {
-      alert('Error: ' + error.message);
-    }
-  });
+        blogPostDiv.textContent = "Generating blog post...";
+
+        try {
+            const response = await fetch('/generateBlogPost', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ transcriptText })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                const blogPost = data.blogPost;
+                blogPostDiv.textContent = "Blog post generation completed:\n" + blogPost;
+            } else {
+                blogPostDiv.textContent = "Error generating blog post: " + data.error;
+            }
+        } catch (error) {
+            blogPostDiv.textContent = 'Error: ' + error.message;
+        }
+    });
 
 
 </script>

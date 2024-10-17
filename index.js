@@ -1,5 +1,6 @@
 const express = require("express");
 const { YoutubeTranscript } = require("youtube-transcript");
+const { createClient } = require("@deepgram/sdk");
 const axios = require("axios");
 const path = require("path");
 const cors = require("cors");
@@ -25,7 +26,7 @@ app.use((req, res, next) => {
 });
 
 // Serve the HTML page when user hits the root route
-app.get("/app", (req, res) => {
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -49,7 +50,8 @@ app.get("/downloadAudio", (req, res) => {
   axios
     .request(options)
     .then(function (response) {
-      res.json(response.data);
+      const audioUrl = response.data.link; // Extract download link
+      res.json({ audioUrl });
     })
     .catch(function (error) {
       console.error("Error downloading audio:", error);
@@ -57,6 +59,33 @@ app.get("/downloadAudio", (req, res) => {
         .status(500)
         .json({ error: "Failed to download audio", details: error.message });
     });
+});
+
+app.get("/transcribeAudio", async (req, res) => {
+  const audioUrl = req.query.audioUrl;
+
+  if (!audioUrl) {
+    return res.status(400).json({ error: "Audio URL is required" });
+  }
+
+  try {
+    const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
+    const deepgram = createClient(deepgramApiKey);
+
+    const response = await deepgram.listen.prerecorded.transcribeUrl(
+      { url: audioUrl },
+      { model: "nova-2" }
+    );
+
+    const transcript =
+      response.result.results.channels[0].alternatives[0].transcript;
+    res.json({ transcript });
+  } catch (error) {
+    console.error("Error transcribing audio:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to transcribe audio", details: error.message });
+  }
 });
 
 // Fetch transcript when the user clicks the button
