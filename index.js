@@ -4,10 +4,15 @@ const { createClient } = require("@deepgram/sdk");
 const axios = require("axios");
 const path = require("path");
 const cors = require("cors");
+const multer = require("multer");
+const fs = require("fs");
 
 require("dotenv").config();
 
 const app = express();
+
+// Set up multer to store uploaded files in the "uploads" folder
+const upload = multer({ dest: "uploads/" });
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cors());
@@ -51,7 +56,8 @@ app.get("/downloadAudio", (req, res) => {
     .request(options)
     .then(function (response) {
       const audioUrl = response.data.link; // Extract download link
-      res.json({ audioUrl });
+
+      res.json({ audioUrl: audioUrl });
     })
     .catch(function (error) {
       console.error("Error downloading audio:", error);
@@ -61,8 +67,8 @@ app.get("/downloadAudio", (req, res) => {
     });
 });
 
-app.get("/transcribeAudio", async (req, res) => {
-  const audioUrl = req.query.audioUrl;
+app.post("/transcribeAudio", async (req, res) => {
+  const audioUrl = req.body.audioUrl;
 
   if (!audioUrl) {
     return res.status(400).json({ error: "Audio URL is required" });
@@ -72,14 +78,30 @@ app.get("/transcribeAudio", async (req, res) => {
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     const deepgram = createClient(deepgramApiKey);
 
-    const response = await deepgram.listen.prerecorded.transcribeUrl(
-      { url: audioUrl },
-      { model: "nova-2" }
+    // STEP 2: Call the transcribeUrl method with the audio payload and options
+    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
+      {
+        url: "https://dpgr.am/spacewalk.wav",
+      },
+      // STEP 3: Configure Deepgram options for audio analysis
+      {
+        model: "nova-2",
+        smart_format: true,
+      }
     );
 
-    const transcript =
-      response.result.results.channels[0].alternatives[0].transcript;
-    res.json({ transcript });
+    if (error) throw error;
+    // STEP 4: Print the results
+    if (!error) {
+      console.log(result.results.channels[0].alternatives[0].transcript);
+
+      const transcript = result.results.channels[0].alternatives[0].transcript;
+      res.json({ transcript });
+    } else {
+      throw Error("Something went wrong");
+    }
+
+    // res.json({ transcript });
   } catch (error) {
     console.error("Error transcribing audio:", error);
     res

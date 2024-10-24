@@ -153,7 +153,14 @@
                 
                 // Step 2: Call Deepgram API to transcribe
                 transcriptDiv.textContent = "Generating transcript...";
-                const transcribeResponse = await fetch(`/transcribeAudio?audioUrl=${audioUrl}`);
+                const transcribeResponse = await fetch(`/transcribeAudio`, {
+
+                    method: 'POST',  // Use POST method
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ audioUrl }) 
+                });
                 const transcribeData = await transcribeResponse.json();
 
                 if (transcribeResponse.ok) {
